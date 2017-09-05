@@ -3,6 +3,42 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
+## Writeup
+
+### The Model
+
+The model used was identical to that of the `mpc_to_line` quiz.  It is defined below:
+`x_[t+1] = x[t] + v[t] * cos(psi[t]) * dt
+y_[t+1] = y[t] + v[t] * sin(psi[t]) * dt
+psi_[t+1] = psi[t] + v[t] / Lf * delta[t] * dt
+v_[t+1] = v[t] + a[t] * dt
+[t+1] = f(x[t]) - y[t] + v[t] * sin(epsi[t]) * dt
+epsi[t+1] = psi[t] - psides[t] + v[t] * delta[t] / Lf * dt`
+
+One important change from the quiz was to adapt the equations used to update `cte` and `epsi` to account for a 3rd order polynomials.  These updated equations can be found in `MPC.cpp` lines 120 and 121, and `main.cpp` lines 117 and 118.
+
+The structure of the cost functions are the same as in the `mpc_to_line` quiz.  The factors added to those equations were largely determined through trial and error.  Fixing other things got the controller to work.
+
+### Timestep Length and Elapsed Duration (N & dt)
+
+N and dt were chosen to be 15 and 0.1 respectively.
+
+N was set to be as long as possible without making the MPC algorithm predict too far beyond the path provided by the waypoints.  Predicting too far into the future (`N=30` was tried) caused very bad outputs through sharp turns.  Ideally, N should be chosen dynamically to make `N*dt*v` equal the length of the curve provided by the waypoints.  Tests with smaller N values seemed to produce less stable control than tests with larger ones.
+
+dt was set to equal the latency.
+
+### Polynomial Fitting and MPC Preprocessing
+
+The waypoints were fitted to a 3rd order polynomial.  Initially a 5th order polynomial was used (which eliminated any degrees of freedom for 6 waypoints), but per a suggestion in the forums, it was dropped to 3.  This seemed to reduce the severity of `N*dt*v` exceeding the length of the curve provided by the waypoints.  In theory, it also ought to have reduced overfitting issues.
+
+In `main.cpp` lines 106 to 113 the waypoints are transformed to the car's coordinate's system, with the new x-axis pointing ahead of the car and the y-axis pointing to its left.  Note that the hard-coding of the number of waypoints is a legacy of fitting them to a 5th order polynomial.  This changed the `x`, `y`, and `psi` values in the intial state to zero (before correcting for latency per below).
+
+### Model Predictive Control with Latency
+
+Latency is handled by projecting the initial state forward over the latency time using the vehicle model.  This is done in `MPC.cpp` lines 176 to 182.  Curiously, including `cte` and `epsi` in the latency corrections seemed to fix an issue where the car suddenly veered off to the left after the sharp turn after the bridge.
+
+---
+
 ## Dependencies
 
 * cmake >= 3.5
