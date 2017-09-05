@@ -91,6 +91,8 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+          double delta = j[1]["steering_angle"];
+          double a = j[1]["throttle"];
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -101,7 +103,33 @@ int main() {
           double steer_value;
           double throttle_value;
 
+          // Transform the waypoints to car coordinates
+          int N_pts = 6; // I'm pretty sure this is always true - if more points are given, only the 1st 6 will be used.  To change, must change in MPC.cpp too.
+          Eigen::VectorXd ptsx_trs(N_pts);
+          Eigen::VectorXd ptsy_trs(N_pts);
+          for (int i = 0; i < N_pts; i++) {
+            ptsx_trs[i] = (ptsx[i] - px)*cos(psi) + (ptsy[i] - py)*sin(psi);
+            ptsy_trs[i] = -(ptsx[i] - px)*sin(psi) + (ptsy[i] - py)*cos(psi);
+          }
+
+          // Fit the polynomial, calc cte & epsi
+          auto coeffs = polyfit(ptsx_trs, ptsy_trs, 3); // Using a 3rd order polynomial per what I read in the forums
+          double cte = polyeval(coeffs, 0); // equation is f(x) - y, but once transformed, x & y = 0
+          double epsi = -atan(coeffs[1]); // equation is psi - atan(f'(x)), but once transformed, psi = 0
+          // f'(x) is evaluated at x = 0, so the only term of the derivative of the polynomial that matters is the 1st (which was the 2nd of the poly)
+
+          // Initialize state
+          Eigen::VectorXd state(8);
+          state << 0, 0, 0, v, cte, epsi, delta, a; // once transformed, px, py, and psi all = 0
+
+          // Solve
+          auto vars = mpc.Solve(state, coeffs);
+          steer_value = vars[0];
+          steer_value *= -1/deg2rad(25); // swap sign per tips & tricks, and bound to [-1, 1]
+          throttle_value = vars[1];
+
           json msgJson;
+          msgJson["epsi"] = throttle_value; // added for debugging
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
           msgJson["steering_angle"] = steer_value;
@@ -110,6 +138,11 @@ int main() {
           //Display the MPC predicted trajectory 
           vector<double> mpc_x_vals;
           vector<double> mpc_y_vals;
+          size_t N_from_MPC = 15;   // needs to match value in MPC
+          for (int i = 2; i < 2 + N_from_MPC; i++) {
+            mpc_x_vals.push_back(vars[i]);
+            mpc_y_vals.push_back(vars[i + N_from_MPC]);
+          }
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
@@ -118,8 +151,10 @@ int main() {
           msgJson["mpc_y"] = mpc_y_vals;
 
           //Display the waypoints/reference line
-          vector<double> next_x_vals;
-          vector<double> next_y_vals;
+          vector<double> vec_x(&ptsx_trs[0], ptsx_trs.data()+ptsx_trs.cols()*ptsx_trs.rows()); // Convert from eigen to std vector, per https://stackoverflow.com/questions/26094379/typecasting-eigenvectorxd-to-stdvector
+          vector<double> vec_y(&ptsy_trs[0], ptsy_trs.data()+ptsy_trs.cols()*ptsy_trs.rows());
+          vector<double> next_x_vals = vec_x;
+          vector<double> next_y_vals = vec_y;
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
