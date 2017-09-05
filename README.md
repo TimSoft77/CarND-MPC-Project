@@ -8,12 +8,12 @@ Self-Driving Car Engineer Nanodegree Program
 ### The Model
 
 The model used was identical to that of the `mpc_to_line` quiz.  It is defined below:
-`x_[t+1] = x[t] + v[t] * cos(psi[t]) * dt
-y_[t+1] = y[t] + v[t] * sin(psi[t]) * dt
-psi_[t+1] = psi[t] + v[t] / Lf * delta[t] * dt
-v_[t+1] = v[t] + a[t] * dt
-[t+1] = f(x[t]) - y[t] + v[t] * sin(epsi[t]) * dt
-epsi[t+1] = psi[t] - psides[t] + v[t] * delta[t] / Lf * dt`
+* `x_[t+1] = x[t] + v[t] * cos(psi[t]) * dt
+* y_[t+1] = y[t] + v[t] * sin(psi[t]) * dt
+* psi_[t+1] = psi[t] + v[t] / Lf * delta[t] * dt
+* v_[t+1] = v[t] + a[t] * dt
+* [t+1] = f(x[t]) - y[t] + v[t] * sin(epsi[t]) * dt
+* epsi[t+1] = psi[t] - psides[t] + v[t] * delta[t] / Lf * dt`
 
 One important change from the quiz was to adapt the equations used to update `cte` and `epsi` to account for a 3rd order polynomials.  These updated equations can be found in `MPC.cpp` lines 120 and 121, and `main.cpp` lines 117 and 118.
 
