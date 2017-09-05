@@ -3,7 +3,7 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
-## Writeup
+## Write-up
 
 ### The Model
 
